@@ -1,0 +1,62 @@
+#------------------------------------------------------------------------------
+# Makefile
+#------------------------------------------------------------------------------
+
+# Set the JPEG environment variables
+JPEGINC=/usr/include
+JPEGLIB=/usr/lib
+
+# Set the TIFF environment variables
+TIFFINC=/usr/include
+TIFFLIB=/usr/lib
+
+# Set the GEOTIFF environment variables
+GEOTIFF_INC=/usr/include
+GEOTIFF_LIB=/usr/lib
+
+# Set up compile options
+CC = gcc
+BINDIR = ../bin
+RM = rm -f
+MV = mv
+#EXTRA = -Wall -g
+EXTRA = -O -Wall
+
+# Define the include files
+INC = bool.h error_handler.h unpack_oli_qa.h
+INCDIR = -I. -I$(JPEGINC) -I$(TIFFINC) -I$(GEOTIFF_INC)
+NCFLAGS = $(EXTRA) $(INCDIR)
+
+# Define the source code and object files
+SRC = error_handler.c       \
+      unpack_oli_get_args.c \
+      unpack_bits.c \
+      unpack_oli_qa.c
+OBJ = $(SRC:.c=.o)
+
+# Define the object libraries
+LIB = -static -L$(GEOTIFF_LIB) -lgeotiff -L$(TIFFLIB) -ltiff -L$(JPEGLIB) -ljpeg -ljbig -lz -lm
+
+# Define the executable
+EXE = unpack_oli_qa
+
+# Target for the executable
+all: $(EXE)
+	@echo "Installing executable to bin directory..."
+	$(MV) $(EXE) $(BINDIR)/
+	@echo "     **** Installation completed. *****"
+
+unpack_oli_qa: $(OBJ) $(INC)
+	$(CC) $(EXTRA) -o $(EXE) $(OBJ) $(LIB)
+
+install:
+	cp $(EXE) $(BIN)
+
+clean:
+	$(RM) *.o $(EXE)
+
+$(OBJ): $(INC)
+
+.c.o:
+	$(CC) $(NCFLAGS) -c $<
+

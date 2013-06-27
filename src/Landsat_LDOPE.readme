@@ -1,0 +1,115 @@
+This Landsat LDOPE toolset was created from the original LDOPE tools provided
+by the MODIS land quality assessment group (Roy et al. 2002) and obtained
+from the USGS EROS LP DAAC.  https://lpdaac.usgs.gov/tools/ldope_tools
+
+The toolset contains the following tools and information on how to utilize
+each tool can be gathered by typing '{toolname} -help' at the command line.
+
+comp_sds_hist - Print the histogram of SDS values (frequency and values),
+  excluding no-data and missing values, of specified SDSs in any of the
+  Landsat data products.
+create_mask - Apply relational and logical operators to one or more SDSs in
+  one or more Landsat products to create an output 2D HDF SDS that can be
+  read by conventional COTS.  For example, create a binary SDS that shows the
+  pixel locations where only good quality, non-cloudy pixels reside with a
+  land cover type of 3.
+create_sds_ts_stat - Create a summary statistic HDF file containing one or
+  more output 2D SDS that describe the mean, standard deviation, minimum,
+  maximum, sum, and number of observations, computed on pixel wise basis from
+  a time series of input Landsat data products.
+mask_sds - Mask one or more SDSs of a Landsat data product file and output
+  the SDS values at pixels where the mask criteria are met.  Output fill values
+  elsewhere.
+math_sds - Perform simple arithmetic on two input SDSs of the same or different
+  Landsat HDF-EOS data products and output the results to a 2D SDS.
+read_pixvals - Read Landsat data product values at the specified pixel
+  locations.
+read_sds_attributes - Print the attributes of one of more SDSs of Landsat
+  data products.
+reduce_sds - Converts multidimensional (3D or 4D) SDSs to a series of 2D
+  HDF SDSs that can be read by conventional COTS.
+sds2bin - Convert an SDS of any Landsat HDF-EOS data product to a flat binary
+  image format.
+subset_sds - Create spatial subset SDSs from one or more SDSs of a Landsat
+  HDF-EOS data products.
+transpose_sds - Transpose one or more SDSs in a Landsat HDF-EOS data product
+  by rotation the SDS 180 degrees in a clockwise direction.
+unpack_sds_bits - The Landsat per-pixel QA information is stored in an
+  efficient bit encoded manner.  This tool decodes requested bit fields and
+  writes them to 2D HDF SDSs that can be read by conventional COTS.
+
+unpack_oli_qa - Newly created application to work with the Landsat OLI QA
+  band, which is a GeoTIFF product.  This tool unpacks the user-specified bits
+  in the OLI QA band, then writes them to their own individual single-band
+  GeoTIFF or combines them into a single GeoTIFF band.
+
+
+Precompiled Binaries
+--------------------
+Precompiled Landsat LDOPE binaries have been built for the following platforms
+and reside in the specified subdirectory, once the Landsat_LDOPE_Tools.zip
+file has been unzipped.  For the Windows binaries, the cygwin1.dll file is
+required to be in the same directory as the executable files otherwise a
+runtime error will occur.  This .dll is provided with the Windows binaries.
+The Linux binaries were compiled for the Linux kernel version 2.6.9.  Older
+versions of the Linux kernel will not be supported with these binaries.
+
+* Linux 32-bit -- linux32bit_bin
+* Linux 64-bit -- linux64bit_bin
+* Windows 32-bit (using Cygwin) -- windows32bit_bin
+* Windows 64-bit (using Cygwin) -- windows64bit_bin
+
+
+Installation
+------------
+If one of the precompiled binaries doesn't work for your platform, the Landsat
+LDOPE Tools can be manually built on your system.  Once the
+Landsat_LDOPE_Tools.zip file is unzipped, it should contain this readme file
+and a src and bin directory.  The src directory contains the source code and an
+associated Makefile for building the Landsat_LDOPE tools.  The executables for
+your platform, once built successfully, will reside in the bin directory.
+
+The Makefile within the src directory requires that the following libraries
+and exist and environment variables be set up before building the Landsat
+LDOPE tools.
+
+HDFINC - directory containing the HDF4 include files
+HDFLIB - directory containing the HDF4 library files
+HDFEOS_INC - directory containing the HDF-EOS include files
+HDFEOS_LIB - directory containing the HDF-EOS library files
+GCTPINC - directory containing the GCTP include files
+GCTPLIB - directory containing the GCTP library
+SZIPLIB - directory containing the SZIP library
+ZLIB - directory containing the ZLIB library
+TIFFINC - directory containing the TIFF include files
+TIFFLIB - directory containing the TIFF library
+GEOTIFF_INC - directory containing the GEOTIFF include files
+GEOTIFF_LIB - directory containing the GEOTIFF library
+JPEGINC - directory containing the JPEG include files
+JPEGLIB - directory containing the JPEG library
+
+Also, the RPC (XDR) libraries are needed.  Cygwin has RPC libraries available,
+but they were more difficult to find for the Linux environment.
+
+Once these environment variables are set up, from the src directory, type
+'make'.  This will build all the tools in the src directory and install the
+executables in the bin directory.
+
+
+Note for Windows Users
+----------------------
+These applications were built using Cygwin and the associated cygwin1.dll file
+is provided with the binaries to support running Cygwin-built applications.
+However, Cygwin version 1.7 added a new "feature" to warn the user when using
+DOS-style paths versus using POSIX paths.
+
+cygwin warning:
+ MS-DOS style path detected: c:/
+ Preferred POSIX equivalent is: /cygdrive/c
+ CYGWIN environment variable option "nodosfilewarning" turns off this warning.
+ Consult the user's guide for more details about POSIX paths:
+ http://cygwin.com/cygwin-ug-net/using.html#using
+
+In order to squelch this warning message, the user will need to create a new
+Windows system environment variable called "CYGWIN" and set it to
+"nodosfilewarning".

@@ -1,0 +1,123 @@
+#------------------------------------------------------------------------------
+# Makefile for Landsat LDOPE Tool.
+#------------------------------------------------------------------------------
+
+# Set the HDF4 environment variables
+HDFINC=/home/gschmidt/hdf-4.2.5/include
+HDFLIB=/home/gschmidt/hdf-4.2.5/lib
+
+# Set the HDF_EOS environment variables
+HDFEOS_INC=/home/gschmidt/hdfeos2.17v1.00/hdfeos/include
+HDFEOS_LIB=/home/gschmidt/hdfeos2.17v1.00/hdfeos/lib
+
+# Set the GCTP environment variables (as delivered with HDF-EOS)
+GCTPINC=/home/gschmidt/hdfeos2.17v1.00/hdfeos/gctp/include
+GCTPLIB=/home/gschmidt/hdfeos2.17v1.00/hdfeos/lib
+
+# Set the SZIP environment variables
+SZIPINC=/home/gschmidt/szip-2.1/include
+SZIPLIB=/home/gschmidt/szip-2.1/lib
+
+# Set the ZLIB environment variables
+ZLIBINC=/home/gschmidt/zlib-1.2.7/include
+ZLIBLIB=/home/gschmidt/zlib-1.2.7/lib
+
+# Set the JPEG environment variables
+JPEGINC=/home/gschmidt/jpeg-6b/include
+JPEGLIB=/home/gschmidt/jpeg-6b/lib
+
+# Set up compile options
+CC	= gcc
+BINDIR	= ../bin
+#EXTRA	= -O -Wall -W -D LINUX32
+EXTRA	= -O -Wall -W
+
+RM	= rm -f
+MV	= mv
+
+INCDIR  = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(GCTPINC) -I$(JPEGINC) -I$(SZIPINC) -I$(ZLIBINC)
+NCFLAGS = $(EXTRA) $(INCDIR)
+
+LIB   = -static -L$(HDFLIB) -lmfhdf -ldf -L$(ZLIBLIB) -lz -L$(SZIPLIB) -lsz \
+        -L$(JPEGLIB) -ljpeg -L$(HDFLIB) -lxdr -lm
+EOSLIB = -static -L$(HDFEOS_LIB) -lhdfeos -L$(GCTPLIB) -lGctp
+
+TARGET = comp_sds_hist create_mask create_sds_ts_stat \
+    mask_sds math_sds read_pixvals read_sds_attributes \
+    reduce_sds sds2bin subset_sds transpose_sds unpack_sds_bits
+
+obj_comp_sds_hist = comp_sds_hist.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+obj_create_mask = create_mask.o mask_sds_lib.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+obj_create_sds_ts_stat = create_sds_ts_stat.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+obj_mask_sds = mask_sds.o mask_sds_lib.o alloc_mem.o sds_rw.o str_op.o main_util.o meta.o
+obj_math_sds = math_sds.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+obj_read_pixvals = read_pixvals.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+obj_read_sds_attributes = read_sds_attributes.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+obj_reduce_sds = reduce_sds.o meta.o alloc_mem.o sds_rw.o str_op.o main_util.o
+obj_sds2bin = sds2bin.o meta.o alloc_mem.o sds_rw.o str_op.o main_util.o
+obj_subset_sds = subset_sds.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+obj_transpose_sds = transpose_sds.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+obj_unpack_sds_bits = unpack_sds_bits.o meta.o alloc_mem.o sds_rw.o str_op.o main_util.o
+
+
+all: $(TARGET)
+	@echo "Installating executable to bin directory..."	
+	$(MV) $(TARGET) $(BINDIR)/
+	@echo "		**** Installation completed. *****"
+
+comp_sds_hist: comp_sds_hist.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+	$(CC) -o $@ $(obj_comp_sds_hist) $(LIB)
+create_mask: create_mask.o mask_sds_lib.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+	$(CC) -o $@ $(obj_create_mask) $(LIB)
+create_sds_ts_stat: create_sds_ts_stat.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+	$(CC) -o $@ $(obj_create_sds_ts_stat) $(LIB)
+mask_sds: mask_sds.o mask_sds_lib.o alloc_mem.o sds_rw.o str_op.o main_util.o meta.o
+	$(CC) -o $@ $(obj_mask_sds) $(LIB)
+math_sds: math_sds.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+	$(CC) -o $@ $(obj_math_sds) $(LIB)
+read_pixvals: read_pixvals.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+	$(CC) -o $@ $(obj_read_pixvals) $(LIB)
+read_sds_attributes: read_sds_attributes.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+	$(CC) -o $@ $(obj_read_sds_attributes) $(LIB)
+reduce_sds: reduce_sds.o meta.o str_op.o alloc_mem.o main_util.o
+	$(CC) -o $@ $(obj_reduce_sds) $(LIB)
+sds2bin: sds2bin.o meta.o str_op.o alloc_mem.o main_util.o
+	$(CC) -o $@ $(obj_sds2bin) $(LIB)
+subset_sds: subset_sds.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+	$(CC) -o $@ $(obj_subset_sds) $(LIB)
+transpose_sds: transpose_sds.o alloc_mem.o sds_rw.o str_op.o meta.o main_util.o
+	$(CC) -o $@ $(obj_transpose_sds) $(LIB)
+unpack_sds_bits: unpack_sds_bits.o meta.o alloc_mem.o sds_rw.o str_op.o main_util.o
+	$(CC) -o $@ $(obj_unpack_sds_bits) $(LIB) $(EOSLIB)
+
+
+alloc_mem.o: sds_types.h
+mask_sds_lib.o: qa_tool.h meta.h sds_rw.h str_op.h alloc_mem.h main_util.h
+str_op.o: qa_tool.h
+main_util.o: qa_tool.h str_op.h alloc_mem.h meta.h main_util.h
+sds_rw.o: str_op.h sds_rw.h qa_tool.h alloc_mem.h
+meta.o: qa_tool.h str_op.h meta.h
+
+comp_sds_hist.o: qa_tool.h sds_rw.h str_op.h alloc_mem.h main_util.h
+create_mask.o: qa_tool.h sds_rw.h str_op.h alloc_mem.h main_util.h
+create_sds_ts_stat.o: qa_tool.h sds_rw.h str_op.h alloc_mem.h main_util.h
+mask_sds.o: qa_tool.h meta.h sds_rw.h str_op.h alloc_mem.h main_util.h
+math_sds.o: qa_tool.h sds_rw.h str_op.h alloc_mem.h main_util.h
+read_pixvals.o: qa_tool.h sds_rw.h str_op.h alloc_mem.h main_util.h
+read_sds_attributes.o: qa_tool.h sds_rw.h str_op.h alloc_mem.h main_util.h
+reduce_sds.o: qa_tool.h sds_rw.h str_op.h alloc_mem.h main_util.h
+sds2bin.o: qa_tool.h sds_rw.h str_op.h alloc_mem.h main_util.h
+subset_sds.o: qa_tool.h sds_rw.h str_op.h alloc_mem.h main_util.h meta.h
+transpose_sds.o: qa_tool.h sds_rw.h str_op.h alloc_mem.h main_util.h
+unpack_sds_bits.o: qa_tool.h sds_rw.h str_op.h alloc_mem.h main_util.h
+
+realclean:
+	-$(RM) *.o
+	-$(RM) $(BINDIR)/*
+
+clean:
+	-$(RM) *.o
+
+.c.o:
+	$(CC) $(NCFLAGS) -c $< -o $@
+
