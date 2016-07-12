@@ -27,6 +27,9 @@ HISTORY:
 Date          Programmer       Reason
 ----------    ---------------  -------------------------------------
 6/19/2013     Gail Schmidt     Original Development
+7/12/2016     Gail Schmidt     Updated to read ProjStraightVertPoleLongGeoKey
+                               if ProjStraightVertPoleLongGeoKey does not exist
+                               for Polar Stereographic scenes
 
 NOTES:
 ******************************************************************************/
@@ -223,10 +226,15 @@ short read_attributes
         if (!GTIFKeyGet (fp_gtif, ProjNatOriginLongGeoKey, &proj_parms[4],
             0, 1))
         {
-            sprintf (errmsg, "Error reading ProjNatOrigintLongGeoKey from "
-                "GeoTIFF file %s", infile);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
+            if (!GTIFKeyGet (fp_gtif, ProjStraightVertPoleLongGeoKey,
+                &proj_parms[4], 0, 1))
+            {
+                sprintf (errmsg, "Error reading ProjNatOriginLongGeoKey or "
+                    "ProjStraightVertPoleLongGeoKey from GeoTIFF file %s",
+                    infile);
+                error_handler (true, FUNC_NAME, errmsg);
+                return (ERROR);
+            }
         }
 
         if (!GTIFKeyGet (fp_gtif, ProjNatOriginLatGeoKey, &proj_parms[5], 0, 1))
