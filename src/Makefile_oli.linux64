@@ -2,29 +2,16 @@
 # Makefile
 #------------------------------------------------------------------------------
 
-# Set the TIFF environment variables
-TIFFINC=/home/gschmidt/tiff-3.9.7/include
-TIFFLIB=/home/gschmidt/tiff-3.9.7/lib
-
-# Set the GEOTIFF environment variables
-GEOTIFF_INC=/home/gschmidt/libgeotiff-1.4.0/include
-GEOTIFF_LIB=/home/gschmidt/libgeotiff-1.4.0/lib
-
-# Set the JPEG environment variables 
-JPEGINC=/home/gschmidt/jpeg-6b/include
-JPEGLIB=/home/gschmidt/jpeg-6b/lib
-
 # Set up compile options
 CC = gcc
 BINDIR = ../bin
 RM = rm -f
 MV = mv
-#EXTRA = -Wall -g
 EXTRA = -O -Wall
 
 # Define the include files
 INC = bool.h error_handler.h unpack_oli_qa.h
-INCDIR = -I. -I$(JPEGINC) -I$(TIFFINC) -I$(GEOTIFF_INC)
+INCDIR = -I. -I$(JPEGINC) -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(ZLIBINC)
 NCFLAGS = $(EXTRA) $(INCDIR)
 
 # Define the source code and object files
@@ -35,7 +22,7 @@ SRC = error_handler.c       \
 OBJ = $(SRC:.c=.o)
 
 # Define the object libraries
-LIB = -static -L$(GEOTIFF_LIB) -lgeotiff -L$(TIFFLIB) -ltiff -L$(JPEGLIB) -ljpeg -lz -lm
+LIB = -static -L$(GEOTIFF_LIB) -lgeotiff -L$(TIFFLIB) -ltiff -L$(JPEGLIB) -ljpeg -L$(ZLIBLIB) -lz -lm
 
 # Define the executable
 EXE = unpack_oli_qa

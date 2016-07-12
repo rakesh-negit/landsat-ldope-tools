@@ -2,35 +2,18 @@
 # Makefile for Landsat LDOPE Tool.
 #------------------------------------------------------------------------------
 
-# Set the HDF4 environment variables
-HDFINC=/cygdrive/d/hdf-4.2.5-32bit/include
-HDFLIB=/cygdrive/d/hdf-4.2.5-32bit/lib
-
-# Set the HDF_EOS environment variables
-HDFEOS_INC=/cygdrive/d/hdfeos2.17v1.00-32bit/hdfeos/include
-HDFEOS_LIB=/cygdrive/d/hdfeos2.17v1.00-32bit/hdfeos/lib
-
-# Set the GCTP environment variables (as delivered with HDF-EOS)
-GCTPINC=/cygdrive/d/hdfeos2.17v1.00/hdfeos/gctp/include
-GCTPLIB=/cygdrive/d/hdfeos2.17v1.00/hdfeos/lib
-
-# Set the SZIP environment variables
-SZIPINC=/cygdrive/d/szip-2.1-32bit/include
-SZIPLIB=/cygdrive/d/szip-2.1-32bit/lib
-
 # Set up compile options
 CC	= gcc
 BINDIR	= ../bin
-#EXTRA	= -O -Wall -W -D LINUX32
 EXTRA	= -m32 -O -Wall -W
 
 RM	= rm -f
 MV	= mv
 
-INCDIR  = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(GCTPINC)
+INCDIR  = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(GCTPINC) -I$(ZLIBINC)
 NCFLAGS = $(EXTRA) $(INCDIR)
 
-LIB   = -static -L$(HDFLIB) -lmfhdf -ldf -lz -L$(SZIPLIB) -lsz -ljpeg -lm
+LIB   = -static -L$(HDFLIB) -lmfhdf -ldf -L$(ZLIBLIB) -lz -L$(SZIPLIB) -lsz -L$(JPEGLIB) -ljpeg -lm
 EOSLIB = -static -L$(HDFEOS_LIB) -lhdfeos -L$(GCTPLIB) -lGctp
 
 TARGET = comp_sds_hist create_mask create_sds_ts_stat \

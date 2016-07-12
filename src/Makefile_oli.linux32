@@ -2,28 +2,11 @@
 # Makefile
 #------------------------------------------------------------------------------
 
-# Set the TIFF environment variables
-TIFFINC=/home/gschmidt/tiff-3.9.7-32bit/include
-TIFFLIB=/home/gschmidt/tiff-3.9.7-32bit/lib
-
-# Set the GEOTIFF environment variables
-GEOTIFF_INC=/home/gschmidt/libgeotiff-1.4.0-32bit/include
-GEOTIFF_LIB=/home/gschmidt/libgeotiff-1.4.0-32bit/lib
-
-# Set the JPEG environment variables 
-JPEGINC=/home/gschmidt/jpeg-6b-32bit/include
-JPEGLIB=/home/gschmidt/jpeg-6b-32bit/lib
-
-# Set the JPEG environment variables 
-ZLIBINC=/home/gschmidt/zlib-1.2.7-32bit/include
-ZLIBLIB=/home/gschmidt/zlib-1.2.7-32bit/lib
-
 # Set up compile options
 CC = gcc
 BINDIR = ../bin
 RM = rm -f
 MV = mv
-#EXTRA = -m32 -O -Wall -g
 EXTRA = -m32 -O -Wall 
 
 # Define the include files
