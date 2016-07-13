@@ -2,36 +2,10 @@
 # Makefile for Landsat LDOPE Tool.
 #------------------------------------------------------------------------------
 
-# Set the HDF4 environment variables
-HDFINC=/home/gschmidt/hdf-4.2.5-32bit/include
-HDFLIB=/home/gschmidt/hdf-4.2.5-32bit/lib
-
-# Set the HDF_EOS environment variables
-HDFEOS_INC=/home/gschmidt/hdfeos2.17v1.00-32bit/hdfeos/include
-HDFEOS_LIB=/home/gschmidt/hdfeos2.17v1.00-32bit/hdfeos/lib
-
-# Set the GCTP environment variables (as delivered with HDF-EOS)
-GCTPINC=/home/gschmidt/hdfeos2.17v1.00-32bit/hdfeos/gctp/include
-GCTPLIB=/home/gschmidt/hdfeos2.17v1.00-32bit/hdfeos/lib
-
-# Set the SZIP environment variables
-SZIPINC=/home/gschmidt/szip-2.1-32bit/include
-SZIPLIB=/home/gschmidt/szip-2.1-32bit/lib
-
-# Set the ZLIB environment variables
-ZLIBINC=/home/gschmidt/zlib-1.2.7-32bit/include
-ZLIBLIB=/home/gschmidt/zlib-1.2.7-32bit/lib
-
-# Set the JPEG environment variables 
-JPEGINC=/home/gschmidt/jpeg-6b-32bit/include
-JPEGLIB=/home/gschmidt/jpeg-6b-32bit/lib
-
 # Set up compile options
 CC	= gcc -m32
 BINDIR	= ../bin
-#EXTRA	= -O -Wall -W -D LINUX32
 EXTRA	= -m32 -O -Wall -W
-
 RM	= rm -f
 MV	= mv
 
