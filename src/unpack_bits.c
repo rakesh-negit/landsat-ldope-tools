@@ -470,6 +470,24 @@ TIFF *create_tiff
     /* Set additional geokeys for polar stereographic projection */
     if (proj == PS_PROJ)
     {
+        if (!GTIFKeySet (fp_gtif, ProjCoordTransGeoKey, TYPE_SHORT, 1,
+            CT_PolarStereographic))
+        {
+            sprintf (errmsg, "Error setting ProjCoordTransGeoKey for Polar "
+                "Stereographic in the GeoTIFF file %s", tiffile);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (NULL);
+        }
+
+        if (!GTIFKeySet (fp_gtif, GeographicTypeGeoKey, TYPE_SHORT, 1,
+            GCS_WGS_84))
+        {
+            sprintf (errmsg, "Error setting GeographicTypeGeoKey for Polar "
+                "Stereographic in the GeoTIFF file %s", tiffile);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (NULL);
+        }
+
         if (!GTIFKeySet (fp_gtif, ProjLinearUnitsGeoKey, TYPE_SHORT, 1,
             proj_linear_units))
         {
