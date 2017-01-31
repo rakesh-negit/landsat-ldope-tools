@@ -1,12 +1,12 @@
 #include "geotiffio.h"
 #include "xtiffio.h"
-#include "unpack_oli_qa.h"
+#include "unpack_collection_qa.h"
 
 /* Define the constants used for shifting bits and ANDing with the bits to
    get to the desire quality bits */
 const int SINGLE_BIT = 0x01; /* 00000001 */
 const int DOUBLE_BIT = 0x03; /* 00000011 */
-const int SHIFT[NQUALITY_TYPES] = {0, 1, 2, 4, 6, 8, 10, 12, 14};
+const int SHIFT[NQUALITY_TYPES] = {0, 1, 2, 4, 5, 7, 9, 11};
 
 /******************************************************************************
 MODULE:  read_attributes
@@ -554,7 +554,7 @@ TIFF *create_tiff
 /******************************************************************************
 MODULE:  unpack_bits
 
-PURPOSE:  Unpack the OLI QA band for the specified quality bits.
+PURPOSE:  Unpack the QA band for the specified quality bits.
 
 RETURN VALUE:
 Type = int
@@ -569,7 +569,7 @@ at the USGS EROS
 HISTORY:
 Date          Programmer       Reason
 ----------    ---------------  -------------------------------------
-6/19/2013     Gail Schmidt     Original Development
+8/31/2016     Ray Dittmeier    Original Development
 
 NOTES:
 ******************************************************************************/
@@ -579,9 +579,10 @@ short unpack_bits
     char *qa_outfile,     /* I: output QA base filename */
     bool qa_specd[NQUALITY_TYPES],  /* I: array to specify which QA bands
                                           was specified for processing */
-    Confidence_t qa_conf[NQUALITY_TYPES]
+    Confidence_t qa_conf[NQUALITY_TYPES],
                           /* I: array to specify the confidence level for
                                 each of the quality fields */
+    int satellite_number  /* I: number of the satellite, e.g.: 8 */
 )
 {
     char FUNC_NAME[] = "unpack_bits"; /* function name */
@@ -595,14 +596,14 @@ short unpack_bits
     uint16 bitspersample;    /* bits per sample in input tiff image */
     uint16 sampleformat;     /* data type of input tiff image */
     int proj_type;           /* projection type */
-    uint8 *unpack_buf=NULL;  /* unpacked QA band from the OLI file */
+    uint8 *unpack_buf=NULL;  /* unpacked QA band from the file */
     uint16 coord_sys;        /* geokey for coordinate system */
     uint16 model_type;       /* geokey for the model type */
     uint16 linear_units;     /* geokey for the linear units */
     uint16 angular_units;    /* geokey for the angular units */
     uint16 projected_type;   /* geokey for the angular units */
     uint16 unpack_val;       /* unpacked bit value for current pixel */
-    uint16 *qa_buf=NULL;     /* QA band from the OLI file */
+    uint16 *qa_buf=NULL;     /* QA band from the file */
     uint16 proj_linear_units; /* geokey for the proj linear units (PS proj) */
     double proj_parms[15];   /* projection parameters (PS proj) */
     double tie_points[6];    /* corner point information */
@@ -694,48 +695,77 @@ short unpack_bits
         }
     }
 
-    if (qa_specd[DROPPED_FRAME])
+    /* For L4-7 this is dropped pixel.  For L8 it is terrain occlusion. */
+    if (qa_specd[OCCLUSION_OR_DROPPED])
     {
-        sprintf (outfile[DROPPED_FRAME], "%s_dropped_frame.tif", qa_outfile);
-        out_fp_tiff[DROPPED_FRAME] = create_tiff (outfile[DROPPED_FRAME],
-            proj_type, nlines, nsamps, tie_points, pixel_size, coord_sys,
-            model_type, linear_units, angular_units, projected_type,
-            proj_linear_units, proj_parms, citation);
-        if (!out_fp_tiff[DROPPED_FRAME])
+        if (satellite_number == 8)
+        {
+            sprintf (outfile[OCCLUSION_OR_DROPPED], "%s_terrain_occl.tif", 
+                qa_outfile);
+        }
+        else
+        {
+            sprintf (outfile[OCCLUSION_OR_DROPPED], "%s_dropped_pixel.tif", 
+                qa_outfile);
+        }
+        out_fp_tiff[OCCLUSION_OR_DROPPED] = create_tiff (
+            outfile[OCCLUSION_OR_DROPPED], proj_type, nlines, nsamps, 
+            tie_points, pixel_size, coord_sys, model_type, linear_units, 
+            angular_units, projected_type, proj_linear_units, proj_parms, 
+            citation);
+        if (!out_fp_tiff[OCCLUSION_OR_DROPPED])
         {
             sprintf (errmsg, "Error creating geoTIFF file %s",
-                outfile[DROPPED_FRAME]);
+                outfile[OCCLUSION_OR_DROPPED]);
             error_handler (true, FUNC_NAME, errmsg);
             return (ERROR);
         }
     }
 
-    if (qa_specd[TERRAIN_OCCL])
+    if (qa_specd[RADIOMETRIC_SAT])
     {
-        sprintf (outfile[TERRAIN_OCCL], "%s_terrain_occl.tif", qa_outfile);
-        out_fp_tiff[TERRAIN_OCCL] = create_tiff (outfile[TERRAIN_OCCL],
+        sprintf (outfile[RADIOMETRIC_SAT], "%s_radiometric_sat.tif", 
+            qa_outfile);
+        out_fp_tiff[RADIOMETRIC_SAT] = create_tiff (outfile[RADIOMETRIC_SAT],
             proj_type, nlines, nsamps, tie_points, pixel_size, coord_sys,
             model_type, linear_units, angular_units, projected_type,
             proj_linear_units, proj_parms, citation);
-        if (!out_fp_tiff[TERRAIN_OCCL])
+        if (!out_fp_tiff[RADIOMETRIC_SAT])
         {
             sprintf (errmsg, "Error creating geoTIFF file %s",
-                outfile[TERRAIN_OCCL]);
+                outfile[RADIOMETRIC_SAT]);
             error_handler (true, FUNC_NAME, errmsg);
             return (ERROR);
         }
     }
 
-    if (qa_specd[WATER])
+    if (qa_specd[CLOUD])
     {
-        sprintf (outfile[WATER], "%s_water.tif", qa_outfile);
-        out_fp_tiff[WATER] = create_tiff (outfile[WATER], proj_type, nlines,
+        sprintf (outfile[CLOUD], "%s_cloud.tif", qa_outfile);
+        out_fp_tiff[CLOUD] = create_tiff (outfile[CLOUD], proj_type, nlines,
             nsamps, tie_points, pixel_size, coord_sys, model_type, linear_units,
             angular_units, projected_type, proj_linear_units, proj_parms,
             citation);
-        if (!out_fp_tiff[WATER])
+        if (!out_fp_tiff[CLOUD])
         {
-            sprintf (errmsg, "Error creating geoTIFF file %s", outfile[WATER]);
+            sprintf (errmsg, "Error creating geoTIFF file %s", outfile[CLOUD]);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    if (qa_specd[CLOUD_CONFIDENCE])
+    {
+        sprintf (outfile[CLOUD_CONFIDENCE], "%s_cloud_confidence.tif", 
+            qa_outfile);
+        out_fp_tiff[CLOUD_CONFIDENCE] = create_tiff (outfile[CLOUD_CONFIDENCE], 
+            proj_type, nlines, nsamps, tie_points, pixel_size, coord_sys, 
+            model_type, linear_units, angular_units, projected_type, 
+            proj_linear_units, proj_parms, citation);
+        if (!out_fp_tiff[CLOUD_CONFIDENCE])
+        {
+            sprintf (errmsg, "Error creating geoTIFF file %s", 
+                outfile[CLOUD_CONFIDENCE]);
             error_handler (true, FUNC_NAME, errmsg);
             return (ERROR);
         }
@@ -757,21 +787,6 @@ short unpack_bits
         }
     }
 
-    if (qa_specd[VEG])
-    {
-        sprintf (outfile[VEG], "%s_vegetation.tif", qa_outfile);
-        out_fp_tiff[VEG] = create_tiff (outfile[VEG], proj_type, nlines, nsamps,
-            tie_points, pixel_size, coord_sys, model_type, linear_units,
-            angular_units, projected_type, proj_linear_units, proj_parms,
-            citation);
-        if (!out_fp_tiff[VEG])
-        {
-            sprintf (errmsg, "Error creating geoTIFF file %s", outfile[VEG]);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-    }
-
     if (qa_specd[SNOW_ICE])
     {
         sprintf (outfile[SNOW_ICE], "%s_snow_ice.tif", qa_outfile);
@@ -788,36 +803,25 @@ short unpack_bits
         }
     }
 
-    if (qa_specd[CIRRUS])
+    if (satellite_number == 8)
     {
-        sprintf (outfile[CIRRUS], "%s_cirrus.tif", qa_outfile);
-        out_fp_tiff[CIRRUS] = create_tiff (outfile[CIRRUS], proj_type, nlines,
-            nsamps, tie_points, pixel_size, coord_sys, model_type, linear_units,
-            angular_units, projected_type, proj_linear_units, proj_parms,
-            citation);
-        if (!out_fp_tiff[CIRRUS])
+        if (qa_specd[CIRRUS])
         {
-            sprintf (errmsg, "Error creating geoTIFF file %s", outfile[CIRRUS]);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
+            sprintf (outfile[CIRRUS], "%s_cirrus.tif", qa_outfile);
+            out_fp_tiff[CIRRUS] = create_tiff (outfile[CIRRUS], proj_type, 
+                nlines, nsamps, tie_points, pixel_size, coord_sys, model_type, 
+                linear_units, angular_units, projected_type, proj_linear_units,
+                proj_parms, citation);
+            if (!out_fp_tiff[CIRRUS])
+            {
+                sprintf (errmsg, "Error creating geoTIFF file %s", 
+                    outfile[CIRRUS]);
+                error_handler (true, FUNC_NAME, errmsg);
+                return (ERROR);
+            }
         }
     }
 
-    if (qa_specd[CLOUD])
-    {
-        sprintf (outfile[CLOUD], "%s_cloud.tif", qa_outfile);
-        out_fp_tiff[CLOUD] = create_tiff (outfile[CLOUD], proj_type, nlines,
-            nsamps, tie_points, pixel_size, coord_sys, model_type, linear_units,
-            angular_units, projected_type, proj_linear_units, proj_parms,
-            citation);
-        if (!out_fp_tiff[CLOUD])
-        {
-            sprintf (errmsg, "Error creating geoTIFF file %s", outfile[CLOUD]);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-    }
-  
     /* Loop through the QA band and process one scanline at a time */
     for (line = 0; line < nlines; line++)
     {
@@ -850,64 +854,95 @@ short unpack_bits
             } 
         }
 
-        if (qa_specd[DROPPED_FRAME])
+        /* For L4-7 this is dropped pixel.  For L8 it is terrain occlusion.
+           They occupy the same single bit. */
+        if (qa_specd[OCCLUSION_OR_DROPPED])
         {
             /* Loop through each sample and unpack the pixel */
             for (samp = 0; samp < nsamps; samp++)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[DROPPED_FRAME];
+                unpack_val = qa_buf[samp] >> SHIFT[OCCLUSION_OR_DROPPED];
                 unpack_buf[samp] = (uint8) (unpack_val & SINGLE_BIT);
             }
 
             /* Write line to the output file */
-            if (TIFFWriteScanline (out_fp_tiff[DROPPED_FRAME], unpack_buf,
+            if (TIFFWriteScanline (out_fp_tiff[OCCLUSION_OR_DROPPED], 
+                unpack_buf, line, 0) == -1)
+            {
+                if (satellite_number == 8)
+                {
+                    sprintf (errmsg, "Error writing line %d to the terrain "
+                        "occlusion file", line);
+                }
+                else
+                {
+                    sprintf (errmsg, "Error writing line %d to the dropped "
+                        "pixel file", line);
+                }
+                error_handler (true, FUNC_NAME, errmsg);
+                return (ERROR);
+            } 
+        }
+
+        if (qa_specd[RADIOMETRIC_SAT])
+        {
+            /* Loop through each sample and unpack the pixel */
+            for (samp = 0; samp < nsamps; samp++)
+            {
+                unpack_val = qa_buf[samp] >> SHIFT[RADIOMETRIC_SAT];
+                unpack_buf[samp] = (uint8) (unpack_val & DOUBLE_BIT);
+            }
+
+            /* Write line to the output file */
+            if (TIFFWriteScanline (out_fp_tiff[RADIOMETRIC_SAT], unpack_buf, 
                 line, 0) == -1)
             {
-                sprintf (errmsg, "Error writing line %d to the dropped frame "
-                    " file", line);
+                sprintf (errmsg, "Error writing line %d to the radiometric "
+                    "saturation file", line);
                 error_handler (true, FUNC_NAME, errmsg);
                 return (ERROR);
             } 
         }
 
-        if (qa_specd[TERRAIN_OCCL])
+        if (qa_specd[CLOUD])
         {
             /* Loop through each sample and unpack the pixel */
             for (samp = 0; samp < nsamps; samp++)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[TERRAIN_OCCL];
+                unpack_val = qa_buf[samp] >> SHIFT[CLOUD];
                 unpack_buf[samp] = (uint8) (unpack_val & SINGLE_BIT);
             }
 
             /* Write line to the output file */
-            if (TIFFWriteScanline (out_fp_tiff[TERRAIN_OCCL], unpack_buf, line,
+            if (TIFFWriteScanline (out_fp_tiff[CLOUD], unpack_buf, line,
                 0) == -1)
             {
-                sprintf (errmsg, "Error writing line %d to the terrain "
-                    "occlusion file", line);
+                sprintf (errmsg, "Error writing line %d to the cloud file",
+                    line);
                 error_handler (true, FUNC_NAME, errmsg);
                 return (ERROR);
             } 
         }
 
-        if (qa_specd[WATER])
+        if (qa_specd[CLOUD_CONFIDENCE])
         {
             /* Loop through each sample and unpack the pixel */
             for (samp = 0; samp < nsamps; samp++)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[WATER];
-                if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[WATER])
+                unpack_val = qa_buf[samp] >> SHIFT[CLOUD_CONFIDENCE];
+                if ((uint8) (unpack_val & DOUBLE_BIT) >= 
+                    qa_conf[CLOUD_CONFIDENCE])
                     unpack_buf[samp] = 1;
                 else
                     unpack_buf[samp] = 0;
             }
 
             /* Write line to the output file */
-            if (TIFFWriteScanline (out_fp_tiff[WATER], unpack_buf, line, 0)
-                == -1)
+            if (TIFFWriteScanline (out_fp_tiff[CLOUD_CONFIDENCE], unpack_buf, 
+                line, 0) == -1)
             {
-                sprintf (errmsg, "Error writing line %d to the water file",
-                    line);
+                sprintf (errmsg, "Error writing line %d to the cloud "
+                    "confidence file", line);
                 error_handler (true, FUNC_NAME, errmsg);
                 return (ERROR);
             } 
@@ -930,28 +965,6 @@ short unpack_bits
                 0) == -1)
             {
                 sprintf (errmsg, "Error writing line %d to the cloud shadow "
-                    "file", line);
-                error_handler (true, FUNC_NAME, errmsg);
-                return (ERROR);
-            } 
-        }
-
-        if (qa_specd[VEG])
-        {
-            /* Loop through each sample and unpack the pixel */
-            for (samp = 0; samp < nsamps; samp++)
-            {
-                unpack_val = qa_buf[samp] >> SHIFT[VEG];
-                if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[VEG])
-                    unpack_buf[samp] = 1;
-                else
-                    unpack_buf[samp] = 0;
-            }
-
-            /* Write line to the output file */
-            if (TIFFWriteScanline (out_fp_tiff[VEG], unpack_buf, line, 0) == -1)
-            {
-                sprintf (errmsg, "Error writing line %d to the vegetation "
                     "file", line);
                 error_handler (true, FUNC_NAME, errmsg);
                 return (ERROR);
@@ -981,50 +994,30 @@ short unpack_bits
             } 
         }
 
-        if (qa_specd[CIRRUS])
+        if (satellite_number == 8)
         {
-            /* Loop through each sample and unpack the pixel */
-            for (samp = 0; samp < nsamps; samp++)
+            if (qa_specd[CIRRUS])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[CIRRUS];
-                if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[CIRRUS])
-                    unpack_buf[samp] = 1;
-                else
-                    unpack_buf[samp] = 0;
+                /* Loop through each sample and unpack the pixel */
+                for (samp = 0; samp < nsamps; samp++)
+                {
+                    unpack_val = qa_buf[samp] >> SHIFT[CIRRUS];
+                    if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[CIRRUS])
+                        unpack_buf[samp] = 1;
+                    else
+                        unpack_buf[samp] = 0;
+                }
+
+                /* Write line to the output file */
+                if (TIFFWriteScanline (out_fp_tiff[CIRRUS], unpack_buf, line, 0)
+                    == -1)
+                {
+                    sprintf (errmsg, "Error writing line %d to the cirrus file",
+                        line);
+                    error_handler (true, FUNC_NAME, errmsg);
+                    return (ERROR);
+                } 
             }
-
-            /* Write line to the output file */
-            if (TIFFWriteScanline (out_fp_tiff[CIRRUS], unpack_buf, line, 0)
-                == -1)
-            {
-                sprintf (errmsg, "Error writing line %d to the cirrus file",
-                    line);
-                error_handler (true, FUNC_NAME, errmsg);
-                return (ERROR);
-            } 
-        }
-
-        if (qa_specd[CLOUD])
-        {
-            /* Loop through each sample and unpack the pixel */
-            for (samp = 0; samp < nsamps; samp++)
-            {
-                unpack_val = qa_buf[samp] >> SHIFT[CLOUD];
-                if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[CLOUD])
-                    unpack_buf[samp] = 1;
-                else
-                    unpack_buf[samp] = 0;
-            }
-
-            /* Write line to the output file */
-            if (TIFFWriteScanline (out_fp_tiff[CLOUD], unpack_buf, line, 0)
-                == -1)
-            {
-                sprintf (errmsg, "Error writing line %d to the cloud file",
-                    line);
-                error_handler (true, FUNC_NAME, errmsg);
-                return (ERROR);
-            } 
         }
     }
 
@@ -1032,22 +1025,23 @@ short unpack_bits
     XTIFFClose (in_fp_tiff);
     if (qa_specd[FILL])
         XTIFFClose (out_fp_tiff[FILL]);
-    if (qa_specd[DROPPED_FRAME])
-        XTIFFClose (out_fp_tiff[DROPPED_FRAME]);
-    if (qa_specd[TERRAIN_OCCL])
-        XTIFFClose (out_fp_tiff[TERRAIN_OCCL]);
-    if (qa_specd[WATER])
-        XTIFFClose (out_fp_tiff[WATER]);
-    if (qa_specd[CLOUD_SHADOW])
-        XTIFFClose (out_fp_tiff[CLOUD_SHADOW]);
-    if (qa_specd[VEG])
-        XTIFFClose (out_fp_tiff[VEG]);
-    if (qa_specd[SNOW_ICE])
-        XTIFFClose (out_fp_tiff[SNOW_ICE]);
-    if (qa_specd[CIRRUS])
-        XTIFFClose (out_fp_tiff[CIRRUS]);
+    if (qa_specd[OCCLUSION_OR_DROPPED])
+        XTIFFClose (out_fp_tiff[OCCLUSION_OR_DROPPED]);
+    if (qa_specd[RADIOMETRIC_SAT])
+        XTIFFClose (out_fp_tiff[RADIOMETRIC_SAT]);
     if (qa_specd[CLOUD])
         XTIFFClose (out_fp_tiff[CLOUD]);
+    if (qa_specd[CLOUD_CONFIDENCE])
+        XTIFFClose (out_fp_tiff[CLOUD_CONFIDENCE]);
+    if (qa_specd[CLOUD_SHADOW])
+        XTIFFClose (out_fp_tiff[CLOUD_SHADOW]);
+    if (qa_specd[SNOW_ICE])
+        XTIFFClose (out_fp_tiff[SNOW_ICE]);
+    if (satellite_number == 8)
+    {
+        if (qa_specd[CIRRUS])
+            XTIFFClose (out_fp_tiff[CIRRUS]);
+    }
 
     /* Free the buffer pointers */
     if (qa_buf != NULL)
@@ -1078,7 +1072,7 @@ at the USGS EROS
 HISTORY:
 Date          Programmer       Reason
 ----------    ---------------  -------------------------------------
-6/21/2013     Gail Schmidt     Original Development
+8/31/2016     Ray Dittmeier    Original Development
 
 NOTES:
 ******************************************************************************/
@@ -1088,9 +1082,10 @@ short unpack_combine_bits
     char *qa_outfile,     /* I: output QA filename */
     bool qa_specd[NQUALITY_TYPES],  /* I: array to specify which QA bands
                                           was specified for processing */
-    Confidence_t qa_conf[NQUALITY_TYPES]
+    Confidence_t qa_conf[NQUALITY_TYPES],
                           /* I: array to specify the confidence level for
                                 each of the quality fields */
+    int satellite_number  /* I: number of the satellite, e.g.: 8 */
 )
 {
     char FUNC_NAME[] = "unpack_combine_bits"; /* function name */
@@ -1217,9 +1212,11 @@ short unpack_combine_bits
                 }
             }
 
-            if (qa_specd[DROPPED_FRAME])
+            /* For L4-7 this is dropped pixel.  For L8 it's terrain occlusion.
+               They occupy the same single bit. */
+            if (qa_specd[OCCLUSION_OR_DROPPED])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[DROPPED_FRAME];
+                unpack_val = qa_buf[samp] >> SHIFT[OCCLUSION_OR_DROPPED];
                 if ((uint8) (unpack_val & SINGLE_BIT) == 1)
                 {
                     unpack_buf[samp] = 1;
@@ -1227,9 +1224,22 @@ short unpack_combine_bits
                 }
             }
 
-            if (qa_specd[TERRAIN_OCCL])
+            if (qa_specd[RADIOMETRIC_SAT])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[TERRAIN_OCCL];
+                /* Radiometric saturation is a 2-bit input so any input value 
+                   over 0 will result in a 1 output. It's handled like the
+                   confidence values, but without a threshold. */ 
+                unpack_val = qa_buf[samp] >> SHIFT[RADIOMETRIC_SAT];
+                if ((uint8) (unpack_val & DOUBLE_BIT) >= 1)
+                {
+                    unpack_buf[samp] = 1;
+                    continue;
+                }
+            }
+
+            if (qa_specd[CLOUD])
+            {
+                unpack_val = qa_buf[samp] >> SHIFT[CLOUD];
                 if ((uint8) (unpack_val & SINGLE_BIT) == 1)
                 {
                     unpack_buf[samp] = 1;
@@ -1237,10 +1247,11 @@ short unpack_combine_bits
                 }
             }
 
-            if (qa_specd[WATER])
+            if (qa_specd[CLOUD_CONFIDENCE])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[WATER];
-                if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[WATER])
+                unpack_val = qa_buf[samp] >> SHIFT[CLOUD_CONFIDENCE];
+                if ((uint8) (unpack_val & DOUBLE_BIT) 
+                    >= qa_conf[CLOUD_CONFIDENCE])
                 {
                     unpack_buf[samp] = 1;
                     continue;
@@ -1257,16 +1268,6 @@ short unpack_combine_bits
                 }
             }
 
-            if (qa_specd[VEG])
-            {
-                unpack_val = qa_buf[samp] >> SHIFT[VEG];
-                if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[VEG])
-                {
-                    unpack_buf[samp] = 1;
-                    continue;
-                }
-            }
-
             if (qa_specd[SNOW_ICE])
             {
                 unpack_val = qa_buf[samp] >> SHIFT[SNOW_ICE];
@@ -1277,23 +1278,16 @@ short unpack_combine_bits
                 }
             }
 
-            if (qa_specd[CIRRUS])
+            if (satellite_number == 8)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[CIRRUS];
-                if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[CIRRUS])
+                if (qa_specd[CIRRUS])
                 {
-                    unpack_buf[samp] = 1;
-                    continue;
-                }
-            }
-
-            if (qa_specd[CLOUD])
-            {
-                unpack_val = qa_buf[samp] >> SHIFT[CLOUD];
-                if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[CLOUD])
-                {
-                    unpack_buf[samp] = 1;
-                    continue;
+                    unpack_val = qa_buf[samp] >> SHIFT[CIRRUS];
+                    if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[CIRRUS])
+                    {
+                        unpack_buf[samp] = 1;
+                        continue;
+                    }
                 }
             }
         }  /* end for samp */

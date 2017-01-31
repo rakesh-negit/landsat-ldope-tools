@@ -7,7 +7,7 @@ CC = gcc
 BINDIR = ../bin
 RM = rm -f
 MV = mv
-EXTRA = -m32 -O -Wall 
+EXTRA = -m32 -O -Wall
 
 # Define the include files
 INC = bool.h error_handler.h unpack_oli_qa.h
@@ -15,34 +15,45 @@ INCDIR = -I. -I$(JPEGINC) -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(ZLIBINC)
 NCFLAGS = $(EXTRA) $(INCDIR)
 
 # Define the source code and object files
-SRC = error_handler.c       \
+SRC1 = error_handler.c       \
       unpack_oli_get_args.c \
       unpack_bits.c \
       unpack_oli_qa.c
-OBJ = $(SRC:.c=.o)
+SRC2 = error_handler.c       \
+      unpack_collection_get_args.c \
+      unpack_collection_bits.c \
+      unpack_collection_qa.c
+OBJ1 = $(SRC1:.c=.o)
+OBJ2 = $(SRC2:.c=.o)
 
 # Define the object libraries
 LIB = -static -L$(GEOTIFF_LIB) -lgeotiff -L$(TIFFLIB) -ltiff -L$(JPEGLIB) -ljpeg -L$(ZLIBLIB) -lz -lm
 
-# Define the executable
-EXE = unpack_oli_qa
+# Define the executables
+EXE1 = unpack_oli_qa
+EXE2 = unpack_collection_qa
+ALL_EXES = $(EXE1) $(EXE2)
 
-# Target for the executable
-all: $(EXE)
-	@echo "Installing executable to bin directory..."	
-	$(MV) $(EXE) $(BINDIR)/
+# Target for the executables
+all: $(ALL_EXES)
+	@echo "Installing executables to bin directory..."	
+	$(MV) $(ALL_EXES) $(BINDIR)/
 	@echo "		**** Installation completed. *****"
 
-unpack_oli_qa: $(OBJ) $(INC)
-	$(CC) $(EXTRA) -o $(EXE) $(OBJ) $(LIB)
+unpack_oli_qa: $(OBJ1) $(INC)
+	$(CC) $(EXTRA) -o $(EXE1) $(OBJ1) $(LIB)
 
-install:
-	cp $(EXE) $(BIN)
+unpack_collection_qa: $(OBJ2) $(INC)
+	$(CC) $(EXTRA) -o $(EXE2) $(OBJ2) $(LIB)
+
+install: $(ALL_EXES)
+	cp $(ALL_EXES) $(BIN)
 
 clean:
-	$(RM) *.o $(EXE)
+	$(RM) *.o $(ALL_EXES)
 
-$(OBJ): $(INC)
+$(OBJ1): $(INC)
+$(OBJ2): $(INC)
 
 .c.o:
 	$(CC) $(NCFLAGS) -c $<

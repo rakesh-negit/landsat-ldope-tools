@@ -47,7 +47,7 @@ NOTE: The HDF-EOS2 link currently provides the source for the HDF4, JPEG, and ZL
   * Checkout (from USGS Github landsat-ldope-tools project) and install source files
   ```
     cd src
-    make -f Makefile{_oli}.{windows|linux}{32|64}
+    make -f Makefile{_unpack}.{windows|linux}{32|64}
   ```
 
 This will create various executable files under ../bin, depending on which Makefile was used for building.  The user should make sure to utilize the appropriate Makefile for their OS and machine architecture.
@@ -63,8 +63,6 @@ This will create various executable files under ../bin, depending on which Makef
 ### Product Guide
 
 ## Release Notes
-  * Cleaned up the Makefiles to remove the hard-coded paths to the includes and
-    libraries.  The environment variables for the include and library paths are
-    specified in this README.
-  * Modified the unpack_oli_qa to support two GeoKeys for identification of the
-    longitude for the Polar Stereographic projection coordinates.
+  * Added the unpack_collection_qa tool to support the collection-era Landsat 
+    QA band format.  This tool is similar to unpack_oli_qa.  It supports 
+    Landsat 4, 5, 7, and 8 inputs.
