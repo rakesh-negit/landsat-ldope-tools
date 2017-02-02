@@ -578,7 +578,7 @@ short unpack_bits
     char *qa_infile,      /* I: input QA filename */
     char *qa_outfile,     /* I: output QA base filename */
     bool qa_specd[NQUALITY_TYPES],  /* I: array to specify which QA bands
-                                          was specified for processing */
+                                          were specified for processing */
     Confidence_t qa_conf[NQUALITY_TYPES],
                           /* I: array to specify the confidence level for
                                 each of the quality fields */
@@ -1081,7 +1081,7 @@ short unpack_combine_bits
     char *qa_infile,      /* I: input QA filename */
     char *qa_outfile,     /* I: output QA filename */
     bool qa_specd[NQUALITY_TYPES],  /* I: array to specify which QA bands
-                                          was specified for processing */
+                                          were specified for processing */
     Confidence_t qa_conf[NQUALITY_TYPES],
                           /* I: array to specify the confidence level for
                                 each of the quality fields */
