@@ -59,9 +59,7 @@ runtime error will occur.  This .dll is provided with the Windows binaries.
 The Linux binaries were compiled for the Linux kernel version 2.6.9.  Older
 versions of the Linux kernel will not be supported with these binaries.
 
-* Linux 32-bit -- linux32bit_bin
 * Linux 64-bit -- linux64bit_bin
-* Windows 32-bit (using Cygwin) -- windows32bit_bin
 * Windows 64-bit (using Cygwin) -- windows64bit_bin
 
 

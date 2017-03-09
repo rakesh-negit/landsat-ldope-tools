@@ -1,14 +1,14 @@
 # landsat-ldope-tools
-#summary Version 1.1.0 of the Landsat LDOPE Toolkit.
-== Landsat-LDOPE-Tools Version 1.1.0 Release Notes ==
-Release Date: July 2016
+#summary Version 1.2.0 of the Landsat LDOPE Toolkit.
+== Landsat-LDOPE-Tools Version 1.2.0 Release Notes ==
+Release Date: March 2017
 
 ### Downloads
 landsat-ldope-tools source code
 
     git clone https://github.com/USGS-EROS/landsat-ldope-tools.git
 
-See git tag [version 1.1.0]
+See git tag [lldope_v1.2.0]
 
 ### Dependencies
   * GCTP libraries (obtained from the GCTP directory in the HDF-EOS2 source code)
@@ -52,15 +52,19 @@ NOTE: The HDF-EOS2 link currently provides the source for the HDF4, JPEG, and ZL
 
 This will create various executable files under ../bin, depending on which Makefile was used for building.  The user should make sure to utilize the appropriate Makefile for their OS and machine architecture.
 
-  *: Test - Download your desired Landsat product(s)(surface reflectance) or OLI L1T from ESPA or GloVis/EE, respectively.  Then run the desired tool for the downloaded Landsat product.
+### Test 
 
-### Associated Scripts
+Download your desired Landsat product(s)(surface reflectance) or OLI L1T from ESPA or GloVis/EE, respectively.  Then run the desired tool for the downloaded Landsat product.
 
-### Verification Data
+### Web Page 
 
-### User Manual
+More information about the L-LDOPE tool can be found at the following URL: 
 
-### Product Guide
+https://landsat.usgs.gov/lldopetool
+
+### User Guide
+
+The L-LDOPE User Guide is available at https://landsat.usgs.gov/sites/default/files/documents/lldope_tool_userguide.pdf
 
 ## Release Notes
   * Added the unpack_collection_qa tool to support the collection-era Landsat 
