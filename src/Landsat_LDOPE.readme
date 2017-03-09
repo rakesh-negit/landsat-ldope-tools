@@ -43,6 +43,11 @@ unpack_oli_qa - Newly created application to work with the Landsat OLI QA
   in the OLI QA band, then writes them to their own individual single-band
   GeoTIFF or combines them into a single GeoTIFF band.
 
+unpack_collection_qa - Newly created application to work with the collection
+  era Landsat 4, 5, 7, or 8 QA band, which is a GeoTIFF product.  This tool
+  provides similar functionality to unpack_oli_qa.  The tool unpacks the
+  user-specified bits in the QA band, then writes them to their own individual
+  single-band GeoTIFF or combines them into a single GeoTIFF band.
 
 Precompiled Binaries
 --------------------
@@ -54,9 +59,7 @@ runtime error will occur.  This .dll is provided with the Windows binaries.
 The Linux binaries were compiled for the Linux kernel version 2.6.9.  Older
 versions of the Linux kernel will not be supported with these binaries.
 
-* Linux 32-bit -- linux32bit_bin
 * Linux 64-bit -- linux64bit_bin
-* Windows 32-bit (using Cygwin) -- windows32bit_bin
 * Windows 64-bit (using Cygwin) -- windows64bit_bin
 
 
