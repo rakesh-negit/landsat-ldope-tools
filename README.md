@@ -1,6 +1,6 @@
 # landsat-ldope-tools
-#summary Version 1.2.0 of the Landsat LDOPE Toolkit.
-== Landsat-LDOPE-Tools Version 1.2.0 Release Notes ==
+#summary Version 1.3.0 of the Landsat LDOPE Toolkit.
+== Landsat-LDOPE-Tools Version 1.3.0 Release Notes ==
 Release Date: March 2017
 
 ### Downloads
@@ -8,7 +8,7 @@ landsat-ldope-tools source code
 
     git clone https://github.com/USGS-EROS/landsat-ldope-tools.git
 
-See git tag [lldope_v1.2.0]
+See git tag [lldope_v1.3.0]
 
 ### Dependencies
   * GCTP libraries (obtained from the GCTP directory in the HDF-EOS2 source code)
@@ -67,6 +67,9 @@ https://landsat.usgs.gov/lldopetool
 The L-LDOPE User Guide is available at https://landsat.usgs.gov/sites/default/files/documents/lldope_tool_userguide.pdf
 
 ## Release Notes
-  * Added the unpack_collection_qa tool to support the collection-era Landsat 
-    QA band format.  This tool is similar to unpack_oli_qa.  It supports 
-    Landsat 4, 5, 7, and 8 inputs.
+  * Updated the unpack_oli_qa and unpack_collection_qa tools to read linear 
+    units from GeoTIFF tag ProjLinearUnitsGeoKey if it is available and 
+    GeogLinearUnitsGeoKey is not available
+  * Updated the unpack_oli_qa and unpack_collection_qa tools to be able to 
+    read tiled GeoTIFF files.  The outputs will not be tiled
+ 

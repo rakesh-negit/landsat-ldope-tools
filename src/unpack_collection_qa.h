@@ -88,6 +88,9 @@ short read_attributes
     int *proj,         /* O: projection type */
     uint32 *nlines,    /* O: number of lines in tiff image */
     uint32 *nsamps,    /* O: number of samples in tiff image */
+    uint32 *tile_width,     /* O: width of each tile (if tiled) */
+    uint32 *tile_length,    /* O: length of each tile (if tiled) */
+    bool *tiled,            /* O: Image is in GeoTiff tiled format */
     uint16 *bitspersample,  /* O: bits per sample in tiff image */
     uint16 *sampleformat,   /* O: data type of tiff image */
     double tie_point[6],    /* O: corner tie points for projection [3] is ULx

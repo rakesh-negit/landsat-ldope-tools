@@ -39,6 +39,9 @@ short read_attributes
     int *proj,         /* O: projection type */
     uint32 *nlines,    /* O: number of lines in tiff image */
     uint32 *nsamps,    /* O: number of samples in tiff image */
+    uint32 *tile_width,     /* O: width of each tile (if tiled) */
+    uint32 *tile_length,    /* O: length of each tile (if tiled) */
+    bool *tiled,            /* O: image is in Geotiff tiled format */
     uint16 *bitspersample,  /* O: bits per sample in tiff image */
     uint16 *sampleformat,   /* O: data type of tiff image */
     double tie_point[6],    /* O: corner tie points for projection [3] is ULx
@@ -109,6 +112,27 @@ short read_attributes
         return (ERROR);
     }
   
+    *tiled = false;
+    if (TIFFIsTiled(fp_tiff))
+    {
+        if (TIFFGetField (fp_tiff, TIFFTAG_TILEWIDTH, tile_width) == 0)
+        {
+            sprintf (errmsg, "Error reading tile width from base TIFF file "
+                "%s", infile);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+  
+        if (TIFFGetField (fp_tiff, TIFFTAG_TILELENGTH, tile_length) == 0)
+        {
+            sprintf (errmsg, "Error reading tile length from base TIFF file "
+                "%s", infile);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+        *tiled = true;
+    }
+  
     count = 6;
     if (TIFFGetField (fp_tiff, TIFFTAG_GEOTIEPOINTS, &count, &tiePoint) == 0)
     {
@@ -176,12 +200,18 @@ short read_attributes
         return (ERROR);
     }
 
+    /* Allow either GeogLinearUnitsGeoKey or ProjLinearUnitsGeoKey for 
+       linear_units.  Use GeogLinearUnitsGeoKey if available */
     if (!GTIFKeyGet (fp_gtif, GeogLinearUnitsGeoKey, linear_units, 0, 1))
     {
-        sprintf (errmsg, "Error reading the GeogLinearUnitsGeoKey from the "
-            "GeoTIFF file %s", infile);
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
+        if (!GTIFKeyGet (fp_gtif, ProjLinearUnitsGeoKey, linear_units,
+            0, 1))
+        {
+            sprintf (errmsg, "Error reading GeogLinearUnitsGeoKey or "
+                "ProjLinearUnitsGeoKey from GeoTIFF file %s", infile);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
     }
 
     if (!GTIFKeyGet (fp_gtif, GeogAngularUnitsGeoKey, angular_units, 0, 1))
@@ -590,8 +620,13 @@ short unpack_bits
     char citation[STR_SIZE]; /* geokey for citation string */
     char outfile[NQUALITY_TYPES][STR_SIZE];   /* array of output filenames */
     uint32 nlines, nsamps;   /* number of lines and samples */
+    uint32 tile_width;       /* width of each tile (if tiled) */
+    uint32 tile_length;      /* length of each tile (if tiled) */
+    bool tiled;              /* image is in Geotiff tiled format */
     int i;                   /* looping variable */
     int line, samp;          /* current line and sample to be processed */
+    int tile_line, tile_samp; /* current tile line and sample to be processed */
+    int line_offset;         /* Offset to reach start of current scan line */
     uint16 bitspersample;    /* bits per sample in input tiff image */
     uint16 sampleformat;     /* data type of input tiff image */
     int proj_type;           /* projection type */
@@ -603,6 +638,10 @@ short unpack_bits
     uint16 projected_type;   /* geokey for the angular units */
     uint16 unpack_val;       /* unpacked bit value for current pixel */
     uint16 *qa_buf=NULL;     /* QA band from the OLI file */
+    tdata_t tile_buf=NULL;   /* Tiled QA band from the OLI file */
+    uint16 *tile_values=NULL; /* Values of pixels from tile */
+    int qa_line;             /* Line location of tile pixel in qa_buf */
+    int qa_samp;             /* Sample location of tile pixel in qa_buf */
     uint16 proj_linear_units; /* geokey for the proj linear units (PS proj) */
     double proj_parms[15];   /* projection parameters (PS proj) */
     double tie_points[6];    /* corner point information */
@@ -616,10 +655,10 @@ short unpack_bits
         out_fp_tiff[i] = NULL;
 
     /* Read the file attributes from the input file */
-    if (read_attributes (qa_infile, &proj_type, &nlines, &nsamps,
-        &bitspersample, &sampleformat, tie_points, pixel_size, &coord_sys,
-        &model_type, &linear_units, &angular_units, &projected_type,
-        &proj_linear_units, proj_parms, citation) != SUCCESS)
+    if (read_attributes (qa_infile, &proj_type, &nlines, &nsamps, &tile_width,
+        &tile_length, &tiled, &bitspersample, &sampleformat, tie_points,
+        pixel_size, &coord_sys, &model_type, &linear_units, &angular_units,
+        &projected_type, &proj_linear_units, proj_parms, citation) != SUCCESS)
     {
         sprintf (errmsg, "Error reading attributes from geoTIFF file %s",
             qa_infile);
@@ -650,25 +689,6 @@ short unpack_bits
         return (ERROR);
     }
 
-    /* Allocate memory for the QA band and an unpacked band (one scanline) */
-    qa_buf = (uint16 *) calloc (nsamps, sizeof (uint16));
-    if (qa_buf == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory (full scene) for the input "
-            "QA band");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    unpack_buf = (uint8 *) calloc (nsamps, sizeof (uint8));
-    if (unpack_buf == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory (full scene) for the "
-            "unpacked QA band");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
     /* Open the input tiff file */
     if ((in_fp_tiff = XTIFFOpen (qa_infile, "r")) == NULL)
     {
@@ -676,7 +696,54 @@ short unpack_bits
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     } 
-  
+
+    /* Allocate memory for the QA band. */
+    if (tiled)
+    {
+        /* If it's a tiled product, allocate memory for a tile, and also memory
+           for the full product. For tiled products, tiles are read 1 at a 
+           time and assembled into a full image buffer */
+        tile_buf = _TIFFmalloc(TIFFTileSize(in_fp_tiff));
+        if (tile_buf == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory (1 tile) for the "
+                "input QA band");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        qa_buf = (uint16 *) calloc (nlines * nsamps, sizeof (uint16));
+        if (qa_buf == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory (full scene) for the "
+                "input QA band");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+    else
+    {
+        /* If it's a scanline product, allocate memory for a single scan line */
+        qa_buf = (uint16 *) calloc (nsamps, sizeof (uint16));
+        if (qa_buf == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory (1 scanline) for the "
+                "input QA band");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Allocate memory for the buffer (1 scanline) */
+    unpack_buf = (uint8 *) calloc (nsamps, sizeof (uint8));
+    if (unpack_buf == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory (1 scanline) for the "
+            "unpacked QA band");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
     /* Create and open the output tiff files, depending on which QA bits were
        specified to be unpacked */
     if (qa_specd[FILL])
@@ -817,16 +884,74 @@ short unpack_bits
             return (ERROR);
         }
     }
-  
+
+    /* If it's a tiled product, read the tiles into a buffer and disassemble 
+       them into image order */
+    if (tiled)
+    {
+        for (line = 0; line < nlines; line += tile_length)
+        {
+            for (samp = 0; samp < nsamps; samp += tile_width)
+            {
+                TIFFReadTile(in_fp_tiff, tile_buf, samp, line, 0, 0);
+                tile_values = (uint16*)tile_buf;
+
+                /* Disassemble the tile into image order */
+                for (tile_line = 0; tile_line < tile_length; tile_line++)
+                {
+                    qa_line = line + tile_line;
+
+                    /* Tile sizes might not divide evenly into the image
+                       size.  Ignore parts of the last tile in a row
+                       that go outside the image boundaries */
+                    if (qa_line >= nlines)
+                    {
+                        continue;
+                    }
+
+                    for (tile_samp = 0; tile_samp < tile_width; tile_samp++)
+                    {
+                        qa_samp = samp + tile_samp;
+
+                        /* Tile sizes might not divide evenly into the image
+                           size.  Ignore parts of the last tile in a column 
+                           that go outside the image boundaries */
+                        if (qa_samp >= nsamps)
+                        {
+                            continue;
+                        }
+
+                        /* Put the tile pixel in its spot of the image buffer */
+                        qa_buf[qa_line * nsamps + qa_samp]
+                            = tile_values[tile_line * tile_width + tile_samp];
+                    }
+                }
+            }
+        }
+    }
+
     /* Loop through the QA band and process one scanline at a time */
     for (line = 0; line < nlines; line++)
     {
-        if (TIFFReadScanline (in_fp_tiff, qa_buf, line, 0) == -1)
+        if (tiled)
         {
-            sprintf (errmsg, "Error reading line %d from the input file", line);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        } 
+            /* Tiled products have already been assembled into an image.  Use
+               the line offset into that image to find the scan line */
+            line_offset = line * nsamps;
+        }
+        else
+        {
+            /* Scan line products still need to be read.  Read and process 1
+               scan line at a time.  No line offset is needed */
+            line_offset = 0;
+            if (TIFFReadScanline (in_fp_tiff, qa_buf, line, 0) == -1)
+            {
+                sprintf (errmsg, "Error reading line %d from the input file",
+                    line);
+                error_handler (true, FUNC_NAME, errmsg);
+                return (ERROR);
+            } 
+        }
 
         /* Unpack each line based on the user input for which quality bits
            should be output */
@@ -835,7 +960,7 @@ short unpack_bits
             /* Loop through each sample and unpack the pixel */
             for (samp = 0; samp < nsamps; samp++)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[FILL];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[FILL];
                 unpack_buf[samp] = (uint8) (unpack_val & SINGLE_BIT);
             }
 
@@ -855,7 +980,7 @@ short unpack_bits
             /* Loop through each sample and unpack the pixel */
             for (samp = 0; samp < nsamps; samp++)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[DROPPED_FRAME];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[DROPPED_FRAME];
                 unpack_buf[samp] = (uint8) (unpack_val & SINGLE_BIT);
             }
 
@@ -864,7 +989,7 @@ short unpack_bits
                 line, 0) == -1)
             {
                 sprintf (errmsg, "Error writing line %d to the dropped frame "
-                    " file", line);
+                    "file", line);
                 error_handler (true, FUNC_NAME, errmsg);
                 return (ERROR);
             } 
@@ -875,7 +1000,7 @@ short unpack_bits
             /* Loop through each sample and unpack the pixel */
             for (samp = 0; samp < nsamps; samp++)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[TERRAIN_OCCL];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[TERRAIN_OCCL];
                 unpack_buf[samp] = (uint8) (unpack_val & SINGLE_BIT);
             }
 
@@ -895,7 +1020,7 @@ short unpack_bits
             /* Loop through each sample and unpack the pixel */
             for (samp = 0; samp < nsamps; samp++)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[WATER];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[WATER];
                 if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[WATER])
                     unpack_buf[samp] = 1;
                 else
@@ -918,7 +1043,7 @@ short unpack_bits
             /* Loop through each sample and unpack the pixel */
             for (samp = 0; samp < nsamps; samp++)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[CLOUD_SHADOW];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[CLOUD_SHADOW];
                 if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[CLOUD_SHADOW])
                     unpack_buf[samp] = 1;
                 else
@@ -941,7 +1066,7 @@ short unpack_bits
             /* Loop through each sample and unpack the pixel */
             for (samp = 0; samp < nsamps; samp++)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[VEG];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[VEG];
                 if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[VEG])
                     unpack_buf[samp] = 1;
                 else
@@ -963,7 +1088,7 @@ short unpack_bits
             /* Loop through each sample and unpack the pixel */
             for (samp = 0; samp < nsamps; samp++)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[SNOW_ICE];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[SNOW_ICE];
                 if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[SNOW_ICE])
                     unpack_buf[samp] = 1;
                 else
@@ -986,7 +1111,7 @@ short unpack_bits
             /* Loop through each sample and unpack the pixel */
             for (samp = 0; samp < nsamps; samp++)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[CIRRUS];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[CIRRUS];
                 if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[CIRRUS])
                     unpack_buf[samp] = 1;
                 else
@@ -1009,7 +1134,7 @@ short unpack_bits
             /* Loop through each sample and unpack the pixel */
             for (samp = 0; samp < nsamps; samp++)
             {
-                unpack_val = qa_buf[samp] >> SHIFT[CLOUD];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[CLOUD];
                 if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[CLOUD])
                     unpack_buf[samp] = 1;
                 else
@@ -1098,7 +1223,12 @@ short unpack_combine_bits
     char tmpstr[STR_SIZE];   /* temporary pointer string message */
     char citation[STR_SIZE]; /* geokey for citation string */
     uint32 nlines, nsamps;   /* number of lines and samples */
+    uint32 tile_width;       /* width of each tile (if tiled) */
+    uint32 tile_length;      /* length of each tile (if tiled) */
+    bool tiled;              /* image is in Geotiff tiled format */
     int line, samp;          /* current line and sample to be processed */
+    int tile_line, tile_samp; /* current tile line and sample to be processed */
+    int line_offset;         /* Offset to reach start of current scan line */
     uint16 bitspersample;    /* bits per sample in input tiff image */
     uint16 sampleformat;     /* data type of input tiff image */
     int proj_type;           /* projection type */
@@ -1110,6 +1240,10 @@ short unpack_combine_bits
     uint16 projected_type;   /* geokey for the angular units */
     uint16 unpack_val;       /* unpacked bit value for current pixel */
     uint16 *qa_buf=NULL;     /* QA band from the OLI file */
+    tdata_t tile_buf=NULL;   /* Tiled QA band from the OLI file */
+    uint16 *tile_values=NULL; /* Values of pixels from tile */
+    int qa_line;             /* Line location of tile pixel in qa_buf */
+    int qa_samp;             /* Sample location of tile pixel in qa_buf */
     uint16 proj_linear_units; /* geokey for the proj linear units (PS proj) */
     double proj_parms[15];   /* projection parameters (PS proj) */
     double tie_points[6];    /* corner point information */
@@ -1118,10 +1252,10 @@ short unpack_combine_bits
     TIFF *out_fp_tiff=NULL;  /* tiff file pointer for output file */
 
     /* Read the file attributes from the input file */
-    if (read_attributes (qa_infile, &proj_type, &nlines, &nsamps,
-        &bitspersample, &sampleformat, tie_points, pixel_size, &coord_sys,
-        &model_type, &linear_units, &angular_units, &projected_type,
-        &proj_linear_units, proj_parms, citation) != SUCCESS)
+    if (read_attributes (qa_infile, &proj_type, &nlines, &nsamps, &tile_width,
+        &tile_length, &tiled, &bitspersample, &sampleformat, tie_points,
+        pixel_size, &coord_sys, &model_type, &linear_units, &angular_units,
+        &projected_type, &proj_linear_units, proj_parms, citation) != SUCCESS)
     {
         sprintf (errmsg, "Error reading attributes from geoTIFF file %s",
             qa_infile);
@@ -1152,25 +1286,6 @@ short unpack_combine_bits
         return (ERROR);
     }
 
-    /* Allocate memory for the QA band and an unpacked band (one scanline) */
-    qa_buf = (uint16 *) calloc (nsamps, sizeof (uint16));
-    if (qa_buf == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory (full scene) for the input "
-            "QA band");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    unpack_buf = (uint8 *) calloc (nsamps, sizeof (uint8));
-    if (unpack_buf == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory (full scene) for the "
-            "unpacked QA band");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
     /* Open the input tiff file */
     if ((in_fp_tiff = XTIFFOpen (qa_infile, "r")) == NULL)
     {
@@ -1179,6 +1294,53 @@ short unpack_combine_bits
         return (ERROR);
     } 
   
+    /* Allocate memory for the QA band. */
+    if (tiled)
+    {
+        /* If it's a tiled product, allocate memory for a tile, and also memory
+           for the full product. For tiled products, tiles are read 1 at a
+           time and assembled into a full image buffer */
+        tile_buf = _TIFFmalloc(TIFFTileSize(in_fp_tiff));
+        if (tile_buf == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory (1 tile) for the "
+                "input QA band");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        qa_buf = (uint16 *) calloc (nlines * nsamps, sizeof (uint16));
+        if (qa_buf == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory (full scene) for the "
+                "input QA band");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+    else
+    {
+        /* If it's a scanline product, allocate memory for a single scan line */
+        qa_buf = (uint16 *) calloc (nsamps, sizeof (uint16));
+        if (qa_buf == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory (1 scanline) for the "
+                "input QA band");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Allocate memory for the buffer (one scanline) */
+    unpack_buf = (uint8 *) calloc (nsamps, sizeof (uint8));
+    if (unpack_buf == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory (1 scanline) for the "
+            "unpacked QA band");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
     /* Create and open the output tiff file */
     out_fp_tiff = create_tiff (qa_outfile, proj_type, nlines, nsamps,
         tie_points, pixel_size, coord_sys, model_type, linear_units,
@@ -1190,16 +1352,74 @@ short unpack_combine_bits
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
-  
+
+    /* If it's a tiled product, read the tiles into a buffer and disassemble
+       them into image order */
+    if (tiled)
+    {
+        for (line = 0; line < nlines; line += tile_length)
+        {
+            for (samp = 0; samp < nsamps; samp += tile_width)
+            {
+                TIFFReadTile(in_fp_tiff, tile_buf, samp, line, 0, 0);
+                tile_values = (uint16*)tile_buf;
+
+                /* Disassemble the tile into image order */
+                for (tile_line = 0; tile_line < tile_length; tile_line++)
+                {
+                    qa_line = line + tile_line;
+
+                    /* Tile sizes might not divide evenly into the image
+                       size.  Ignore parts of the last tile in a row
+                       that go outside the image boundaries */
+                    if (qa_line >= nlines)
+                    {
+                        continue;
+                    }
+
+                    for (tile_samp = 0; tile_samp < tile_width; tile_samp++)
+                    {
+                        qa_samp = samp + tile_samp;
+
+                        /* Tile sizes might not divide evenly into the image
+                           size.  Ignore parts of the last tile in a column
+                           that go outside the image boundaries */
+                        if (qa_samp >= nsamps)
+                        {
+                            continue;
+                        }
+
+                        /* Put the tile pixel in its spot of the image buffer */
+                        qa_buf[qa_line * nsamps + qa_samp]
+                            = tile_values[tile_line * tile_width + tile_samp];
+                    }
+                }
+            }
+        }
+    }
+
     /* Loop through the QA band and process one scanline at a time */
     for (line = 0; line < nlines; line++)
     {
-        if (TIFFReadScanline (in_fp_tiff, qa_buf, line, 0) == -1)
+        if (tiled)
         {
-            sprintf (errmsg, "Error reading line %d from the input file", line);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        } 
+            /* Tiled products have already been assembled into an image.  Use
+               the line offset into that image to find the scan line */
+            line_offset = line * nsamps;
+        }
+        else
+        {
+            /* Scan line products still need to be read.  Read and process 1
+               scan line at a time.  No line offset is needed */
+            line_offset = 0;
+            if (TIFFReadScanline (in_fp_tiff, qa_buf, line, 0) == -1)
+            {
+                sprintf (errmsg, "Error reading line %d from the input file",
+                    line);
+                error_handler (true, FUNC_NAME, errmsg);
+                return (ERROR);
+            }
+        }
 
         /* Unpack each pixel based on the user input for which quality bits
            should be output.  Once a bit is turned on, then move on to the
@@ -1209,7 +1429,7 @@ short unpack_combine_bits
             unpack_buf[samp] = 0;
             if (qa_specd[FILL])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[FILL];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[FILL];
                 if ((uint8) (unpack_val & SINGLE_BIT) == 1)
                 {
                     unpack_buf[samp] = 1;
@@ -1219,7 +1439,7 @@ short unpack_combine_bits
 
             if (qa_specd[DROPPED_FRAME])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[DROPPED_FRAME];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[DROPPED_FRAME];
                 if ((uint8) (unpack_val & SINGLE_BIT) == 1)
                 {
                     unpack_buf[samp] = 1;
@@ -1229,7 +1449,7 @@ short unpack_combine_bits
 
             if (qa_specd[TERRAIN_OCCL])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[TERRAIN_OCCL];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[TERRAIN_OCCL];
                 if ((uint8) (unpack_val & SINGLE_BIT) == 1)
                 {
                     unpack_buf[samp] = 1;
@@ -1239,7 +1459,7 @@ short unpack_combine_bits
 
             if (qa_specd[WATER])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[WATER];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[WATER];
                 if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[WATER])
                 {
                     unpack_buf[samp] = 1;
@@ -1249,7 +1469,7 @@ short unpack_combine_bits
 
             if (qa_specd[CLOUD_SHADOW])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[CLOUD_SHADOW];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[CLOUD_SHADOW];
                 if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[CLOUD_SHADOW])
                 {
                     unpack_buf[samp] = 1;
@@ -1259,7 +1479,7 @@ short unpack_combine_bits
 
             if (qa_specd[VEG])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[VEG];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[VEG];
                 if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[VEG])
                 {
                     unpack_buf[samp] = 1;
@@ -1269,7 +1489,7 @@ short unpack_combine_bits
 
             if (qa_specd[SNOW_ICE])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[SNOW_ICE];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[SNOW_ICE];
                 if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[SNOW_ICE])
                 {
                     unpack_buf[samp] = 1;
@@ -1279,7 +1499,7 @@ short unpack_combine_bits
 
             if (qa_specd[CIRRUS])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[CIRRUS];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[CIRRUS];
                 if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[CIRRUS])
                 {
                     unpack_buf[samp] = 1;
@@ -1289,7 +1509,7 @@ short unpack_combine_bits
 
             if (qa_specd[CLOUD])
             {
-                unpack_val = qa_buf[samp] >> SHIFT[CLOUD];
+                unpack_val = qa_buf[line_offset + samp] >> SHIFT[CLOUD];
                 if ((uint8) (unpack_val & DOUBLE_BIT) >= qa_conf[CLOUD])
                 {
                     unpack_buf[samp] = 1;
