@@ -625,7 +625,7 @@ short unpack_bits
     bool tiled;              /* image is in Geotiff tiled format */
     int i;                   /* looping variable */
     int line, samp;          /* current line and sample to be processed */
-    int tile_line, tile_samp; /* current tile line and sample to be processed */
+    int tile_line;           /* current tile line to be processed */
     int line_offset;         /* Offset to reach start of current scan line */
     uint16 bitspersample;    /* bits per sample in input tiff image */
     uint16 sampleformat;     /* data type of input tiff image */
@@ -641,7 +641,7 @@ short unpack_bits
     tdata_t tile_buf=NULL;   /* Tiled QA band from the OLI file */
     uint16 *tile_values=NULL; /* Values of pixels from tile */
     int qa_line;             /* Line location of tile pixel in qa_buf */
-    int qa_samp;             /* Sample location of tile pixel in qa_buf */
+    int samples_to_copy = 0; /* The number of samples to copy to the buffer */
     uint16 proj_linear_units; /* geokey for the proj linear units (PS proj) */
     double proj_parms[15];   /* projection parameters (PS proj) */
     double tie_points[6];    /* corner point information */
@@ -902,29 +902,29 @@ short unpack_bits
                     qa_line = line + tile_line;
 
                     /* Tile sizes might not divide evenly into the image
-                       size.  Ignore parts of the last tile in a row
+                       size.  Ignore parts of the last tile in a column
                        that go outside the image boundaries */
                     if (qa_line >= nlines)
                     {
                         continue;
                     }
 
-                    for (tile_samp = 0; tile_samp < tile_width; tile_samp++)
+                    /* Tile sizes might not divide evenly into the image size.
+                       Ignore parts of the last tile in a row that go outside
+                       the image boundaries */
+                    if (samp + tile_width > nsamps)
                     {
-                        qa_samp = samp + tile_samp;
-
-                        /* Tile sizes might not divide evenly into the image
-                           size.  Ignore parts of the last tile in a column 
-                           that go outside the image boundaries */
-                        if (qa_samp >= nsamps)
-                        {
-                            continue;
-                        }
-
-                        /* Put the tile pixel in its spot of the image buffer */
-                        qa_buf[qa_line * nsamps + qa_samp]
-                            = tile_values[tile_line * tile_width + tile_samp];
+                        samples_to_copy = nsamps - samp;
                     }
+                    else
+                    {
+                        samples_to_copy = tile_width;
+                    }
+
+                    /* Put the tile line in its spot of the image buffer */
+                    memcpy(&qa_buf[qa_line * nsamps + samp], 
+                           &tile_values[tile_line * tile_width],
+                           samples_to_copy * sizeof(uint16));
                 }
             }
         }
@@ -1227,7 +1227,7 @@ short unpack_combine_bits
     uint32 tile_length;      /* length of each tile (if tiled) */
     bool tiled;              /* image is in Geotiff tiled format */
     int line, samp;          /* current line and sample to be processed */
-    int tile_line, tile_samp; /* current tile line and sample to be processed */
+    int tile_line;           /* current tile line to be processed */
     int line_offset;         /* Offset to reach start of current scan line */
     uint16 bitspersample;    /* bits per sample in input tiff image */
     uint16 sampleformat;     /* data type of input tiff image */
@@ -1243,7 +1243,7 @@ short unpack_combine_bits
     tdata_t tile_buf=NULL;   /* Tiled QA band from the OLI file */
     uint16 *tile_values=NULL; /* Values of pixels from tile */
     int qa_line;             /* Line location of tile pixel in qa_buf */
-    int qa_samp;             /* Sample location of tile pixel in qa_buf */
+    int samples_to_copy = 0; /* The number of samples to copy to the buffer */
     uint16 proj_linear_units; /* geokey for the proj linear units (PS proj) */
     double proj_parms[15];   /* projection parameters (PS proj) */
     double tie_points[6];    /* corner point information */
@@ -1377,22 +1377,22 @@ short unpack_combine_bits
                         continue;
                     }
 
-                    for (tile_samp = 0; tile_samp < tile_width; tile_samp++)
+                    /* Tile sizes might not divide evenly into the image size.
+                       Ignore parts of the last tile in a row that go outside
+                       the image boundaries */
+                    if (samp + tile_width > nsamps)
                     {
-                        qa_samp = samp + tile_samp;
-
-                        /* Tile sizes might not divide evenly into the image
-                           size.  Ignore parts of the last tile in a column
-                           that go outside the image boundaries */
-                        if (qa_samp >= nsamps)
-                        {
-                            continue;
-                        }
-
-                        /* Put the tile pixel in its spot of the image buffer */
-                        qa_buf[qa_line * nsamps + qa_samp]
-                            = tile_values[tile_line * tile_width + tile_samp];
+                        samples_to_copy = nsamps - samp;
                     }
+                    else
+                    {
+                        samples_to_copy = tile_width;
+                    }
+
+                    /* Put the tile line in its spot of the image buffer */
+                    memcpy(&qa_buf[qa_line * nsamps + samp], 
+                           &tile_values[tile_line * tile_width],
+                           samples_to_copy * sizeof(uint16));
                 }
             }
         }
