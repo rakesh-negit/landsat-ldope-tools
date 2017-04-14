@@ -64,7 +64,7 @@ https://landsat.usgs.gov/landsat-qa-tools
 
 ### User Guide
 
-The User Guide is available at https://landsat.usgs.gov/sites/default/files/documents/landsat_qa_tools_userguide.pdf 
+The User Guide is available at https://landsat.usgs.gov/sites/default/files/documents/landsat_QA_tools_userguide.pdf 
 
 ## Release Notes
   * Updated READMEs to reflect new links to web page and user guide and
