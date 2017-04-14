@@ -1,14 +1,14 @@
 # landsat-ldope-tools
-#summary Version 1.3.0 of the Landsat LDOPE Toolkit.
-== Landsat-LDOPE-Tools Version 1.3.0 Release Notes ==
-Release Date: March 2017
+#summary Version 1.4 of the Landsat LDOPE Toolkit.
+== Landsat-LDOPE-Tools Version 1.4 Release Notes ==
+Release Date: April 2017
 
 ### Downloads
 landsat-ldope-tools source code
 
     git clone https://github.com/USGS-EROS/landsat-ldope-tools.git
 
-See git tag [lldope_v1.3.0]
+See git tag [lldope_v1.4]
 
 ### Dependencies
   * GCTP libraries (obtained from the GCTP directory in the HDF-EOS2 source code)
@@ -58,18 +58,15 @@ Download your desired Landsat product(s)(surface reflectance) or OLI L1T from ES
 
 ### Web Page 
 
-More information about the L-LDOPE tool can be found at the following URL: 
+More information about the tools can be found at the following URL: 
 
-https://landsat.usgs.gov/lldopetool
+https://landsat.usgs.gov/landsat-qa-tools
 
 ### User Guide
 
-The L-LDOPE User Guide is available at https://landsat.usgs.gov/sites/default/files/documents/lldope_tool_userguide.pdf
+The User Guide is available at https://landsat.usgs.gov/sites/default/files/documents/landsat_qa_tools_userguide.pdf 
 
 ## Release Notes
-  * Updated the unpack_oli_qa and unpack_collection_qa tools to read linear 
-    units from GeoTIFF tag ProjLinearUnitsGeoKey if it is available and 
-    GeogLinearUnitsGeoKey is not available
-  * Updated the unpack_oli_qa and unpack_collection_qa tools to be able to 
-    read tiled GeoTIFF files.  The outputs will not be tiled
+  * Updated READMEs to reflect new links to web page and user guide and
+    new name "Landsat QA Tools" for zip package
  

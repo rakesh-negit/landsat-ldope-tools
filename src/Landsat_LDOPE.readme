@@ -2,8 +2,8 @@ This Landsat LDOPE toolset was created from the original LDOPE tools provided
 by the MODIS land quality assessment group (Roy et al. 2002) and obtained
 from the USGS EROS LP DAAC.  https://lpdaac.usgs.gov/tools/ldope_tools
 
-The toolset contains the following tools and information on how to utilize
-each tool can be gathered by typing '{toolname} -help' at the command line.
+The toolset contains the following tools. Information on how to use each 
+tool can be gathered by typing '{toolname} -help' at the command line.
 
 comp_sds_hist - Print the histogram of SDS values (frequency and values),
   excluding no-data and missing values, of specified SDSs in any of the
@@ -51,13 +51,14 @@ unpack_collection_qa - Newly created application to work with the collection
 
 Precompiled Binaries
 --------------------
-Precompiled Landsat LDOPE binaries have been built for the following platforms
-and reside in the specified subdirectory, once the Landsat_LDOPE_Tools.zip
-file has been unzipped.  For the Windows binaries, the cygwin1.dll file is
-required to be in the same directory as the executable files otherwise a
-runtime error will occur.  This .dll is provided with the Windows binaries.
-The Linux binaries were compiled for the Linux kernel version 2.6.9.  Older
-versions of the Linux kernel will not be supported with these binaries.
+Precompiled binaries have been built for a subset of the Landsat LDOPE tools 
+called the Landsat QA Tools for the following platforms and reside in the
+specified subdirectory, once the Landsat_QA_Tools.zip file has been unzipped.
+For the Windows binaries, the cygwin1.dll file is required to be in the same
+directory as the executable files. Otherwise a runtime error will occur.
+This .dll is provided with the Windows binaries. The Linux binaries were
+compiled for the Linux kernel version 2.6.9.  Older versions of the Linux
+kernel will not be supported with these binaries.
 
 * Linux 64-bit -- linux64bit_bin
 * Windows 64-bit (using Cygwin) -- windows64bit_bin
@@ -66,20 +67,16 @@ versions of the Linux kernel will not be supported with these binaries.
 Installation
 ------------
 If one of the precompiled binaries doesn't work for your platform, the Landsat
-LDOPE Tools can be manually built on your system.  Once the
-Landsat_LDOPE_Tools.zip file is unzipped, it should contain this readme file
+QA Tools can be manually built on your system.  Once the
+Landsat_QA_Tools.zip file is unzipped, it should contain a readme file
 and a src and bin directory.  The src directory contains the source code and an
-associated Makefile for building the Landsat_LDOPE tools.  The executables for
+associated Makefile for building the Landsat QA tools.  The executables for
 your platform, once built successfully, will reside in the bin directory.
 
 The Makefile within the src directory requires that the following libraries
 and exist and environment variables be set up before building the Landsat
-LDOPE tools.
+QA tools.
 
-HDFINC - directory containing the HDF4 include files
-HDFLIB - directory containing the HDF4 library files
-HDFEOS_INC - directory containing the HDF-EOS include files
-HDFEOS_LIB - directory containing the HDF-EOS library files
 GCTPINC - directory containing the GCTP include files
 GCTPLIB - directory containing the GCTP library
 SZIPLIB - directory containing the SZIP library
@@ -90,6 +87,14 @@ GEOTIFF_INC - directory containing the GEOTIFF include files
 GEOTIFF_LIB - directory containing the GEOTIFF library
 JPEGINC - directory containing the JPEG include files
 JPEGLIB - directory containing the JPEG library
+
+The following are required for the Landsat LDOPE tools, but not the Landsat
+QA Tools subset.
+
+HDFINC - directory containing the HDF4 include files
+HDFLIB - directory containing the HDF4 library files
+HDFEOS_INC - directory containing the HDF-EOS include files
+HDFEOS_LIB - directory containing the HDF-EOS library files
 
 Also, the RPC (XDR) libraries are needed.  Cygwin has RPC libraries available,
 but they were more difficult to find for the Linux environment.
