@@ -1,6 +1,6 @@
 # landsat-ldope-tools
-#summary Version 1.3.1 of the Landsat LDOPE Toolkit.
-== Landsat-LDOPE-Tools Version 1.3.1 Release Notes ==
+#summary Version 1.4 of the Landsat LDOPE Toolkit.
+== Landsat-LDOPE-Tools Version 1.4 Release Notes ==
 Release Date: April 2017
 
 ### Downloads
@@ -8,7 +8,7 @@ landsat-ldope-tools source code
 
     git clone https://github.com/USGS-EROS/landsat-ldope-tools.git
 
-See git tag [lldope_v1.3.1]
+See git tag [lldope_v1.4]
 
 ### Dependencies
   * GCTP libraries (obtained from the GCTP directory in the HDF-EOS2 source code)
